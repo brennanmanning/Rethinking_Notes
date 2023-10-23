@@ -1,0 +1,4 @@
+*.js
+*.css
+*.woff
+notebooks/.jupyter_cache/
