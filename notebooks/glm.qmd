@@ -1,7 +1,9 @@
 ---
 title: Big Entropy & Generalized Linear Models
 jupyter: julia-1.9
-format: pdf
+format: 
+  html:
+    html-math-method: katex
 execute: 
   cache: true
 ---

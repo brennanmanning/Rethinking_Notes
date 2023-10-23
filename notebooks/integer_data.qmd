@@ -1,0 +1,77 @@
+---
+title: God Spiked the Integers
+format: 
+  html:
+    html-math-method: katex
+jupyter: julia-1.9
+execute:
+  cache: true
+---
+
+## Binomial Regression
+
+There are 2 "flavors" of Binomial Regression:
+
+1. Logistic Regression: data is organized into single trial cases, each trial is 0 or 1
+2. Aggregated Binomial Regression: individual trials with the same covariates are aggregated into a 
+number of "successes"
+
+```{julia}
+using CSV, DataFrames, DataFramesMeta
+using Distributions, Turing, MCMCChains, Plots, StatsPlots
+using StatsFuns: logistic
+
+c = CSV.read("../data/chimpanzees.csv", DataFrame);
+first(c, 10)
+```
+The idea here is that chimpanzees have 2 options to choose from: to be prosocial or not. There
+are some blinders here to control for handedness, but all options can be controlled for. We 
+transform the predictor into a index variable for the possible combinations:  
+
+1. 2 items on right lever and no partner
+2. 2 items on left lever and no partner
+3. 2 items on right lever and a partner
+4. 2 items on left lever and a partner
+
+The variable `prosoc_left` contains which lever the 2 food items are on and treatment contains 
+whether a partner was in the room. 
+
+```{julia}
+c = @transform(c, :treatment = 1 .+ :prosoc_left + 2 * :condition)
+```
+
+We are trying to model the probability that the chimp pulled the lever on the left. 
+
+Our model is the following
+\begin{align*}
+L_i &\sim \mathrm{Binomial}(1, p_i) \\
+\mathrm{logit}(p_i) &= \alpha_{\mathrm{Actor}[i]} + \beta_{\mathrm{Treatment}[i]}
+\end{align*}
+
+Actor is the id of the chimpanzee. In total, we will have 7 $\alpha$ parameters, one for each
+chimpanzee, and 4 $\beta$, one for each treatment. 
+
+We need to determine priors for these, so we'll do prior-predictives with ignoring $\beta$ to get
+sensible starting-points for $\alpha$.
+
+```{julia}
+@model function binomial_prior_check(l)
+  alpha ~ Normal(0, 10)
+  for i in eachindex(l)
+    v = logistic(alpha)
+    l[i] ~ Bernoulli(v)
+    end
+end
+
+p = binomial_prior_check(c[:, :pulled_left])
+chain = sample(p, Prior(), 1000)
+```
+
+```{julia}
+prior_preds = logistic.(chain[:alpha])
+density(prior_preds, trim = true, bandwidth = 0.1)
+```
+
+From here, you can notice that there are spikes in probabilities at the extreme edges. So, our prior
+on $\alpha$ is too wide. Narrowing that fixes this issue, so we replace 10, with 1.5. 
+
