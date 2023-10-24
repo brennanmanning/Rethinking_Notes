@@ -75,3 +75,29 @@ density(prior_preds, trim = true, bandwidth = 0.1)
 From here, you can notice that there are spikes in probabilities at the extreme edges. So, our prior
 on $\alpha$ is too wide. Narrowing that fixes this issue, so we replace 10, with 1.5. 
 
+Now, we investigate the effect of priors for $\beta$. This is slightly tricker as we will need
+treatments in this model to index the $\beta$s. 
+
+```{julia}
+@model function binomial_prior_check(l, t)
+  alpha ~ Normal(0, 1.5)
+  beta ~ MvNormal(zeros(4), 10 * I)
+  for i in eachindex(l)
+    v = logistic(alpha + beta[t[i]])
+    l[i] ~ Bernoulli(v)
+  end
+end
+
+p = binomial_prior_check(c[:, :pulled_left], c[:, :treatment])
+chain = sample(p, Prior(), 1000)
+```
+
+```{julia}
+prior_preds = hcat([logistic.(chain[:alpha] .+ chain["beta[$i]"]) for i in 1:4]...)
+prior_diffs12 = abs.(prior_preds[:, 1] - prior_preds[:, 2])
+density(prior_diffs12, trim = true)
+```
+
+We don't see the large spike at one, but we do see somewhat similar results to the 0.5 prior used.
+So, to keep with the book, we will use the 0.5 prior. We can now fully model the actual data.
+
