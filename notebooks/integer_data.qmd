@@ -17,8 +17,8 @@ There are 2 "flavors" of Binomial Regression:
 number of "successes"
 
 ```{julia}
-using CSV, DataFrames, DataFramesMeta
-using Distributions, Turing, MCMCChains, Plots, StatsPlots
+using CSV, DataFrames, Query
+using Distributions, Turing, MCMCChains, Plots, StatsPlots, LinearAlgebra
 using StatsFuns: logistic
 
 c = CSV.read("../data/chimpanzees.csv", DataFrame);
@@ -37,7 +37,7 @@ The variable `prosoc_left` contains which lever the 2 food items are on and trea
 whether a partner was in the room. 
 
 ```{julia}
-c = @transform(c, :treatment = 1 .+ :prosoc_left + 2 * :condition)
+c = c |> @mutate(treatment = 1 + _.prosoc_left + 2 * _.condition) |> DataFrame
 ```
 
 We are trying to model the probability that the chimp pulled the lever on the left. 
