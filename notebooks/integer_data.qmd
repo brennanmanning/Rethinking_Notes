@@ -101,3 +101,51 @@ density(prior_diffs12, trim = true)
 We don't see the large spike at one, but we do see somewhat similar results to the 0.5 prior used.
 So, to keep with the book, we will use the 0.5 prior. We can now fully model the actual data.
 
+```{julia}
+@model function binomial_chimp(l, t, a)
+  alpha ~ MvNormal(zeros(7), 1.5 * I)
+  beta ~ MvNormal(zeros(4), 0.5 * I)
+  for i in eachindex(l)
+    v = logistic(alpha[a[i]] + beta[t[i]])
+    l[i] ~ Bernoulli(v)
+  end
+end
+
+post = binomial_chimp(c[:, :pulled_left], c[:, :treatment], c[:, :actor])
+chains = sample(post, HMC(0.05, 10), MCMCThreads(), 1000, 4)
+```
+
+```{julia}
+plot(chains)
+```
+
+```{julia}
+alphas = DataFrame(MCMCChains.group(chains, :alpha)) |> @select(-:chain, -:iteration) |> DataFrame
+alphas = stack(alphas)
+```
+
+```{julia}
+alpha_preds = alphas |> @mutate(prob = logistic(_.value))
+```
+
+```{julia}
+@df alpha_preds density(:prob, group = :variable, trim = true)
+```
+
+```{julia}
+betas = DataFrame(MCMCChains.group(chains, :beta)) |> @select(-:chain, -:iteration) |> DataFrame
+betas_stack = stack(betas);
+```
+
+```{julia}
+@df betas_stack density(:value, group = :variable)
+```
+
+```{julia}
+beta_diff = stack(DataFrame((rp = betas[:, 1] - betas[:, 3], lp = betas[:, 2] - betas[:, 4])))
+```
+
+```{julia}
+@df beta_diff density(:value, group = :variable)
+```
+
