@@ -163,3 +163,37 @@ beta_diff = stack(DataFrame((rp = betas[:, 1] - betas[:, 3], lp = betas[:, 2] - 
 ```
 There's no clear answer to whether we see a clear indication that chimpanzees are pro-social.
 
+## Poisson Regression
+
+The poisson distribution is useful for modelling count data with no known upper bound (as in the 
+Binomial distribution). Theoretically, there are 2 justifications. In the book, he mentions that
+the Poisson can be seen as a "special" case of the binomial. (I've never heard of it being a 
+special case but a limiting distribution as $n$ approaches $\infty$). It seems like it is a decent
+approximation still when $n$ is large and $p$ is small. 
+
+Poisson regression has a simple form, mainly due to the Poisson distribution being characterized by
+a single parameter:
+\begin{align*}
+y_i &\sim \mathrm{Poisson}(\lambda_i) \\
+\log(\lambda_i) &= \alpha + \beta (x_i - \bar{x})\\
+\end{align*}
+
+Note that $\lambda_i$ will control the expected value and variance of the distribution. Care also
+needs to be taken with $\lambda_i$, as the $\lambda$ will end up being the result of an exponential
+which may grow unexpectedly large.
+
+```{julia}
+k = CSV.read("../data/kline.csv", DataFrame)
+k
+```
+
+```{julia}
+k = @chain k begin
+  @rtransform begin
+    :lP = log(:population)
+    :contact_id = :contact == "high" ? 2 : 1
+  end
+  @transform :P = (:lP .- mean(:lP)) ./ std(:lP)
+end
+```
+
