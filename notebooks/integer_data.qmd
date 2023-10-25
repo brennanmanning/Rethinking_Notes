@@ -17,8 +17,8 @@ There are 2 "flavors" of Binomial Regression:
 number of "successes"
 
 ```{julia}
-using CSV, DataFrames, Query
-using Distributions, Turing, MCMCChains, Plots, StatsPlots, LinearAlgebra
+using CSV, DataFrames, DataFramesMeta
+using Distributions, Turing, MCMCChains, Plots, StatsPlots, LinearAlgebra, Statistics
 using StatsFuns: logistic
 
 c = CSV.read("../data/chimpanzees.csv", DataFrame);
@@ -37,7 +37,7 @@ The variable `prosoc_left` contains which lever the 2 food items are on and trea
 whether a partner was in the room. 
 
 ```{julia}
-c = c |> @mutate(treatment = 1 + _.prosoc_left + 2 * _.condition) |> DataFrame
+c = @transform c :treatment = 1 .+ :prosoc_left + 2 * :condition
 ```
 
 We are trying to model the probability that the chimp pulled the lever on the left. 
@@ -120,12 +120,12 @@ plot(chains)
 ```
 
 ```{julia}
-alphas = DataFrame(MCMCChains.group(chains, :alpha)) |> @select(-:chain, -:iteration) |> DataFrame
-alphas = stack(alphas)
+alphas = @select DataFrame(MCMCChains.group(chains, :alpha)) $(Not(:iteration)) $(Not(:chain))
+alphas = stack(alphas);
 ```
 
 ```{julia}
-alpha_preds = alphas |> @mutate(prob = logistic(_.value))
+alpha_preds = @transform alphas :prob = logistic.(:value);
 ```
 
 ```{julia}
@@ -133,7 +133,7 @@ alpha_preds = alphas |> @mutate(prob = logistic(_.value))
 ```
 
 ```{julia}
-betas = DataFrame(MCMCChains.group(chains, :beta)) |> @select(-:chain, -:iteration) |> DataFrame
+betas = @select DataFrame(MCMCChains.group(chains, :beta)) $(Not(:iteration)) $(Not(:chain)) 
 betas_stack = stack(betas);
 ```
 
