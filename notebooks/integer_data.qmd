@@ -119,6 +119,14 @@ chains = sample(post, HMC(0.05, 10), MCMCThreads(), 1000, 4)
 plot(chains)
 ```
 
+Trace plots seem to behave correctly, and all chains seem to have traversed similar regions, so
+we can be confident in our posterior samples.
+
+Now, we can just produce something similar for the analysis done on the $\alpha$s and $\beta$s in 
+the same vein as the book. 
+
+Each $\alpha$ is for each individual chimpanzee and should reflect each of their proclivity to pull
+the left lever without any disincentive.
 ```{julia}
 alphas = @select DataFrame(MCMCChains.group(chains, :alpha)) $(Not(:iteration)) $(Not(:chain))
 alphas = stack(alphas);
@@ -131,21 +139,27 @@ alpha_preds = @transform alphas :prob = logistic.(:value);
 ```{julia}
 @df alpha_preds density(:prob, group = :variable, trim = true)
 ```
-
+Each $beta$ should have the effect of the treatment encoded within. 
 ```{julia}
 betas = @select DataFrame(MCMCChains.group(chains, :beta)) $(Not(:iteration)) $(Not(:chain)) 
 betas_stack = stack(betas);
 ```
 
+This has distribution of $\beta$s inside. 
 ```{julia}
 @df betas_stack density(:value, group = :variable)
 ```
 
+To get a better sense of the actual impact of having a partner in the room, let's look at 
+differences between treatments with prosocial options on the same side for with and without 
+partners.
+
 ```{julia}
-beta_diff = stack(DataFrame((rp = betas[:, 1] - betas[:, 3], lp = betas[:, 2] - betas[:, 4])))
+beta_diff = stack(DataFrame((rp = betas[:, 1] - betas[:, 3], lp = betas[:, 2] - betas[:, 4])));
 ```
 
 ```{julia}
 @df beta_diff density(:value, group = :variable)
 ```
+There's no clear answer to whether we see a clear indication that chimpanzees are pro-social.
 
